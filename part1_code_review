@@ -1,1 +1,25 @@
+1.Issues with given the code and there Impact are:
+  a.SKU uniqueness is NOT checked: Due to this two products can get same id so system will not know which product is this.
+    Impact-wrong billing,wrong inventory,wrong reports.
+
+  b.Product uses only one warehouse: As products exist in multi warehouse as this code assume only one product=one warehouse 
+    due to this inventory failures may occur because inventory is warehouse specific.
+    Impact-System design is wrong.
+
+  c.NO transaction: As both products and inventory uses "db.session.commit()" but if product saved but inventory fails than DB crashes
+    Impact-products are visible but not sellable and inventory get broken.
+
+  d.No input validation: Price may be string initial_quantity is missing and warehouse_id is null and no validation there should be validation.
+    Impact-App crashes and bad user experience and may cause errors.
+
+  e.Decimal handling missing: Price must be decimal due to this Floating point errors may possible
+    Impact-Generation of wrong invoice and also revenue mismatch.
+
+  f.No error handling: what if SKU alredy exists and what if database is down
+    Impact-Uers see ugly error and App crashes.
+
+  g.Duplicate inventory risk: Same product + warehouse can be added again
+    Impact-Two inventory rows for same item and Total stock becomes wrong.
+
+2.Fixes and corrected version with explanation:
 

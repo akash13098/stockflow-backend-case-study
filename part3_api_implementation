@@ -1,0 +1,107 @@
+1.Implementation using Node.js
+    const express = require("express");
+    const app = express();
+    
+    /*
+      assumed helper functions
+    */
+    const getWarehousesByCompany = async (companyId) => {
+      return [
+        { id: 1, name: "Main Warehouse" }
+      ];
+    };
+    
+    const getLowStockInventory = async (warehouseId) => {
+      return [
+        {
+          product_id: 123,
+          product_name: "Widget A",
+          sku: "WID-001",
+          current_stock: 5,
+          product_type: "standard",
+          avg_daily_sales: 0.4,
+          supplier: {
+            id: 789,
+            name: "Supplier Corp",
+            contact_email: "orders@supplier.com"
+          }
+        }
+      ];
+    };
+    
+    // Threshold configuration by product type
+    const STOCK_THRESHOLDS = {
+      standard: 20,
+      bundle: 10
+    };
+    
+    app.get("/api/companies/:company_id/alerts/low-stock", async (req, res) => {
+      const { company_id } = req.params;
+      let alerts = [];
+    
+      try {
+        // This  Fetch all warehouses for the company
+        const warehouses = await getWarehousesByCompany(company_id);
+    
+        // It Checks inventory for each warehouse
+        for (const warehouse of warehouses) {
+          const inventoryItems = await getLowStockInventory(warehouse.id);
+    
+          for (const item of inventoryItems) {
+            // Step 3: Apply business rules
+            const threshold = STOCK_THRESHOLDS[item.product_type] || 15;
+    
+            // This will Ignore products with no recent sales
+            if (item.avg_daily_sales <= 0) continue;
+    
+            if (item.current_stock < threshold) {
+              const daysUntilStockout = Math.floor(
+                item.current_stock / item.avg_daily_sales
+              );
+    
+              alerts.push({
+                product_id: item.product_id,
+                product_name: item.product_name,
+                sku: item.sku,
+                warehouse_id: warehouse.id,
+                warehouse_name: warehouse.name,
+                current_stock: item.current_stock,
+                threshold,
+                days_until_stockout: daysUntilStockout,
+                supplier: item.supplier
+              });
+            }
+          }
+        }
+    
+        return res.json({
+          alerts,
+          total_alerts: alerts.length
+        });
+    
+      } catch (error) {
+        return res.status(500).json({
+          error: "Failed to generate low stock alerts"
+        });
+      }
+    });
+    
+    module.exports = app;
+
+
+2.Edge Cases:
+   1. Company has no warehouses
+
+   2. Warehouse has no inventory records
+      
+   3. Product has zero or no recent sales
+      
+   4. Supplier information is missing
+    
+   5. Threshold configuration not found for product type
+    
+   6. Average daily sales equals zero (division safety)
+    
+   7. Inventory quantity becomes negative due to bad data
+
+

@@ -1,0 +1,101 @@
+1.DATABASE SCHEMA DESIGN:
+    a.creating tables with columns, data types, and relationships:-
+      1.companies:
+        companies (
+          id UUID PRIMARY KEY,
+          name VARCHAR(255),
+          created_at TIMESTAMP
+        )
+
+      2.warehouses:
+        warehouses (
+          id UUID PRIMARY KEY,
+          company_id UUID REFERENCES companies(id),
+          name VARCHAR(255),
+          location TEXT
+        )
+
+
+      3.Products:
+        products (
+          id UUID PRIMARY KEY,
+          company_id UUID REFERENCES companies(id),
+          name VARCHAR(255),
+          sku VARCHAR(100) UNIQUE,
+          price DECIMAL(10,2),
+          product_type VARCHAR(50),
+          created_at TIMESTAMP
+        )
+
+      4.inventory:
+        inventory (
+          id UUID PRIMARY KEY,
+          product_id UUID REFERENCES products(id),
+          warehouse_id UUID REFERENCES warehouses(id),
+          quantity INT,
+          updated_at TIMESTAMP,
+          UNIQUE(product_id, warehouse_id)
+        )
+
+      5.inventory_logs
+        inventory_logs (
+          id UUID PRIMARY KEY,
+          product_id UUID,
+          warehouse_id UUID,
+          change_quantity INT,
+          reason VARCHAR(100),
+          created_at TIMESTAMP
+        )
+
+      6.Suppliers:
+        suppliers (
+          id UUID PRIMARY KEY,
+          name VARCHAR(255),
+          contact_email VARCHAR(255)
+        )
+
+      7.Product suppliers:
+        product_suppliers (
+          product_id UUID REFERENCES products(id),
+          supplier_id UUID REFERENCES suppliers(id),
+          PRIMARY KEY(product_id, supplier_id)
+        )
+
+      8.Product_Bundles:
+        product_bundles (
+          bundle_product_id UUID REFERENCES products(id),
+          child_product_id UUID REFERENCES products(id),
+          quantity INT,
+          PRIMARY KEY(bundle_product_id, child_product_id)
+        )
+
+2.Identifying Gaps:
+  Questions to ask product team:
+     1. Can suppliers serve multiple companies?
+
+     2. Can one product have multiple suppliers with priority?
+      
+     3. What defines “recent sales activity”? (7 days? 30 days?)
+      
+     4. How are bundle inventories deducted? (auto or manual?)
+      
+     5. Are warehouses shared across companies?
+      
+     6. Can products exist without inventory?
+      
+     7. Do we need soft deletes?
+      
+     8. Should inventory go negative?
+      
+     9. Do prices vary per warehouse?
+      
+     10. Are SKUs unique globally or per company?
+
+
+3.Design decesion explanation: I designed the schema by separating core business entities such as companies, warehouses, products, inventory, and suppliers
+to keep the data normalized and avoid duplication. Inventory is modeled as a separate table because the same product can exist in multiple warehouses with 
+different quantities, and a unique constraint ensures only one inventory record per product per warehouse. Inventory logs are included to track stock changes 
+over time for auditing and troubleshooting. Suppliers are linked to products using a many-to-many relationship to allow flexibility in sourcing. Bundle products
+are handled through a self-referencing table that defines which products are included in a bundle. Indexes are added on commonly queried fields like SKU and
+foreign keys to improve performance and scalability as the system grows.
+    

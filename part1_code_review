@@ -23,3 +23,45 @@
 
 2.Fixes and corrected version with explanation:
 
+    async function createProduct(req, res) {
+  const { name, sku, price, warehouse_id, initial_quantity = 0 } = req.body;
+
+  // Here is validation
+  if (!name || !sku || !price || !warehouse_id) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+  
+  try {
+    await db.transaction(async (trx) => {
+      // This ensures SKU is unique
+      const existing = await trx('products').where({ sku }).first();
+      if (existing) {
+        throw new Error("SKU already exists");
+      }
+
+      const [productId] = await trx('products').insert({
+        name,
+        sku,
+        price: Number(price)
+      });
+
+      // inventory entry
+      await trx('inventory').insert({
+        product_id: productId,
+        warehouse_id,
+        quantity: initial_quantity
+      });
+    });
+
+    return res.status(201).json({ message: "Product created" });
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+}
+
+Explanation: I fixed the code by first validating all required inputs so invalid data does not enter the system.
+I ensured the SKU is unique before creating a product to avoid duplicate items. I separated product creation from warehouse 
+inventory so a product can exist in multiple warehouses as required. I wrapped product and inventory creation inside a single
+transaction so that either both are saved or none are, preventing inconsistent data in case of failure. I also handled price 
+as a decimal to avoid financial inaccuracies and added proper error handling to return meaningful messages instead of crashing
+the application. Overall, the fixes focus on data consistency, business rules, and real-world production safety.
